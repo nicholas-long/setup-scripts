@@ -31,3 +31,10 @@ cd ~/
 wget https://github.com/RustScan/RustScan/releases/download/2.0.1/rustscan_2.0.1_amd64.deb
 sudo apt install -y ./rustscan_2.0.1_amd64.deb 
 rm rustscan_2.0.1_amd64.deb
+
+#set up aliases
+cd ~/
+echo '' >> .zshrc
+echo 'if [ -f ~/.bash_aliases ]; then' >> .zshrc
+echo '    . ~/.bash_aliases' >> .zshrc
+echo 'fi' >> .zshrc
