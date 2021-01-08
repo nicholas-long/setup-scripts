@@ -27,6 +27,14 @@ sudo wget https://github.com/DominicBreuker/pspy/releases/download/v1.2.0/pspy32
 sudo wget https://github.com/DominicBreuker/pspy/releases/download/v1.2.0/pspy64s
 cd ~/
 
+#install useful tools that should be here
+sudo apt install -y gobuster 
+sudo apt install -y ffuf
+#need this for some CTFs that hide stuff in images
+sudo apt install -y steghide
+sudo apt install -y libimage-exiftool-perl
+
+
 #rustscan
 wget https://github.com/RustScan/RustScan/releases/download/2.0.1/rustscan_2.0.1_amd64.deb
 sudo apt install -y ./rustscan_2.0.1_amd64.deb 
