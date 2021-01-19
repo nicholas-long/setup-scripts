@@ -38,6 +38,9 @@ sudo wget https://github.com/DominicBreuker/pspy/releases/download/v1.2.0/pspy32
 sudo wget https://github.com/DominicBreuker/pspy/releases/download/v1.2.0/pspy64s
 cd ~/
 
+#install necessary tools
+sudo apt install -y python3-pip
+
 #install useful tools that should be here
 sudo apt install -y gobuster 
 sudo apt install -y ffuf
