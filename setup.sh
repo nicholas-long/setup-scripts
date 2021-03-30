@@ -47,7 +47,14 @@ sudo apt install -y ffuf
 #need this for some CTFs that hide stuff in images
 sudo apt install -y steghide
 sudo apt install -y libimage-exiftool-perl
+sudo gem install seccomp-tools
+#install gef for gdb
+bash -c "$(curl -fsSL http://gef.blah.cat/sh)"
+sudo pip3 install pwntools
 
+#java and ghidra
+#use correct java:
+sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
 
 #rustscan
 wget https://github.com/RustScan/RustScan/releases/download/2.0.1/rustscan_2.0.1_amd64.deb
