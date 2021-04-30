@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #install nvidia drivers
-sudo apt install nvidia-opencl-dev nvidia-opencl-common
-sudo apt install -y nvidia-driver nvidia-cuda-toolkit\n
+sudo apt install -y nvidia-opencl-dev nvidia-opencl-common
+sudo apt install -y nvidia-driver nvidia-cuda-toolkit
 
 #install sublime
 wget -qO - https://download.sublimetext.com/sublimehq-pub.gpg | sudo apt-key add -
