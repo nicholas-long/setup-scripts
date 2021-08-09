@@ -29,19 +29,6 @@ def copy_to_tmux(text):
     cmd2 = f"echo -n {text} | tmux loadb -"
     os.system(cmd2)
 
-# def copy_to_pane(text):
-#     print(text)
-#     cmd = "tmux list-panes | grep -v active"
-#     panes = list(map(lambda x: x.strip('\n '), os.popen(cmd).readlines()))
-#     if len(panes) == 1:
-#         pane = panes[0].split(' ')[-1]
-#     else:
-#         print("Select pane.")
-#         menu = TerminalMenu(panes)
-#         index = menu.show()
-#         pane = panes[index].split(' ')[-1]
-#     os.system(f"tmux send-keys -t {pane} '{text}'")
-
 def select_pane():
     cmd = "tmux list-panes | grep -v active"
     panes = list(map(lambda x: x.strip('\n '), os.popen(cmd).readlines()))
@@ -87,6 +74,21 @@ def get_apache_file(pattern):
     print(files[index])
     return files[index]
 
+def get_temp_python_file():
+    ip = get_interface_ip()
+    cmd = "ps -ef | grep http.server | grep -v grep"
+    output = os.popen(cmd).read()
+    items = list(map(lambda x: x.strip('\n'), filter(lambda x: len(x) > 0, output.split(' '))))
+    print(items)
+    port = items[-1]
+    pid = items[1]
+    cmd = f"ls /proc/{pid}/cwd"
+    files = strip_lines(os.popen(cmd).readlines())
+    index = TerminalMenu(files).show()
+    filename = files[index]
+    url = f"http://{ip}:{port}/{filename}"
+    copy_to_pane(url)
+
 def linux_menu():
     options = ["Stabilize shell", "wget a file", "curl file and pipe to bash"]
     terminal_menu = TerminalMenu(options)
@@ -120,7 +122,7 @@ def windows_menu():
 
 def main():
     os.system("pwd")
-    options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Start apache"]
+    options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "Start apache"]
     terminal_menu = TerminalMenu(options)
     index = terminal_menu.show()
     if index == 0:
@@ -130,6 +132,8 @@ def main():
     elif index == 2:
         windows_menu()
     elif index == 3:
+        get_temp_python_file()
+    elif index == 4:
         print("Starting apache... sudo required")
         os.system("sudo systemctl start apache2")
 
