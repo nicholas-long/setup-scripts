@@ -318,7 +318,7 @@ def windows_menu():
 
 def main():
     os.system("pwd")
-    options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "MSFVenom", "Start apache"]
+    options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "MSFVenom", "Start apache", "Stop apache"]
     terminal_menu = TerminalMenu(options)
     index = terminal_menu.show()
     print(options[index])
@@ -338,6 +338,9 @@ def main():
     elif index == 5:
         print("Starting apache... sudo required")
         os.system("sudo systemctl start apache2")
+    elif index == 6:
+        print("Stopping apache... sudo required")
+        os.system("sudo systemctl stop apache2")
 
 if __name__ == "__main__":
     main()
