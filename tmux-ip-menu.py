@@ -120,9 +120,10 @@ def linux_menu():
     def getUrl(fileExtension):
         if not is_python_http_running() or choose_apache_or_python(): # then use apache
             file = get_apache_file(fileExtension)
+            return f"{ip}/{file}"
         else:
-            file = get_temp_python_file(fileExtension)
-        return f"{ip}/{file}"
+            url, _ = get_temp_python_file(fileExtension)
+            return url
     if index == 0: stabilize_shell()
     elif index == 1 or index == 2:
         ip = get_interface_ip()
