@@ -25,10 +25,10 @@ def interfaces():
     print("Select interface.")
     menu = TerminalMenu(ifaces)
     index = menu.show()
-    return interfaces[index]
+    return interfaces[index].split(' ')[0]
 
 def get_interface_ip():
-    return get_ip(interfaces().split(' ')[0])
+    return get_ip(interfaces()
 
 def strip_lines(lines):
     # return list(map(lambda x: x.strip('\n '), lines))
