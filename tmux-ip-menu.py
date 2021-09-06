@@ -28,7 +28,7 @@ def interfaces():
     return interfaces[index].split(' ')[0]
 
 def get_interface_ip():
-    return get_ip(interfaces()
+    return get_ip(interfaces())
 
 def strip_lines(lines):
     # return list(map(lambda x: x.strip('\n '), lines))
