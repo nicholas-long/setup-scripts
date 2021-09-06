@@ -5,6 +5,9 @@ import os
 import string
 import random
 import base64
+import sys
+
+popup_mode = False
 
 def get_ip(iface):
     cmd = f"ip a s {iface} | grep -Eo \'[0-9]{{1,3}}\\.[0-9]{{1,3}}\\.[0-9]{{1,3}}\\.[0-9]{{1,3}}\' | head -n 1"
@@ -35,14 +38,20 @@ def copy_to_tmux(text):
     os.system(f"echo -n {text} | tmux loadb -")
 
 def select_pane():
-    panes = strip_lines(os.popen("tmux list-panes | grep -v active").readlines())
-    def paneIndex(p): 
-        return panes[p].split(' ')[-1]
-    if len(panes) == 1: return paneIndex(0)
-    else:
-        print("Select pane.")
-        index = TerminalMenu(panes).show()
-        return paneIndex(index)
+    global popup_mode
+    if popup_mode: # if we are running in popup mode, we can just get the current pane to send text to
+        pane = os.popen("tmux list-panes | grep active").readline()
+        pane = pane.split(' ')[-2]
+        return pane
+    else: # if we're running in a pane, then we have to ignore the current pane and select from the other panes
+        panes = strip_lines(os.popen('tmux list-panes | grep -v active').readlines())
+        def paneIndex(p): 
+            return panes[p].split(' ')[-1]
+        if len(panes) == 1: return paneIndex(0)
+        else:
+            print("Select pane.")
+            index = TerminalMenu(panes).show()
+            return paneIndex(index)
 
 def copy_to_pane(text):
     pane = select_pane()
@@ -316,6 +325,10 @@ def windows_menu():
         nishang_shell_menu()
 
 def main():
+    global popup_mode
+    if len(sys.argv) >= 2:
+        if sys.argv[1] == 'popup': 
+            popup_mode = True
     os.system("pwd")
     options = ["Copy my IP", "Linux shell commands", "Windows shell commands", "Copy python HTTP", "MSFVenom", "Start apache", "Stop apache"]
     index = TerminalMenu(options).show()
