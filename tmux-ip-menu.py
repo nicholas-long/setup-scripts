@@ -16,16 +16,19 @@ def get_ip(iface):
 def interfaces():
     cmd = 'ip l | grep -E \'^[[:digit:]]+: \' | cut -d \':\' -f 2'
     lines = os.popen(cmd).readlines()
-    interfaces = [x.strip('\n ') for x in lines]
+    interfaces = [(x.strip('\n ')) for x in lines]
+    ifaces = []
+    for iface in interfaces:
+        ifaces.append(iface + " " + get_ip(iface))
     tunInterfaces = [x for x in interfaces if str(x).startswith('tun')]
     if len(tunInterfaces) == 1: return tunInterfaces[0]
     print("Select interface.")
-    menu = TerminalMenu(interfaces)
+    menu = TerminalMenu(ifaces)
     index = menu.show()
     return interfaces[index]
 
 def get_interface_ip():
-    return get_ip(interfaces())
+    return get_ip(interfaces().split(' ')[0])
 
 def strip_lines(lines):
     # return list(map(lambda x: x.strip('\n '), lines))
