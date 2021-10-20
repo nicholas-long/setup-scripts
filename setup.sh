@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #install nvidia drivers
-sudo apt install -y nvidia-opencl-dev nvidia-opencl-common
-sudo apt install -y nvidia-driver nvidia-cuda-toolkit
+#sudo apt install -y nvidia-opencl-dev nvidia-opencl-common
+#sudo apt install -y nvidia-driver nvidia-cuda-toolkit
 
 #install sublime
 wget -qO - https://download.sublimetext.com/sublimehq-pub.gpg | sudo apt-key add -
@@ -60,6 +60,12 @@ sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
 wget https://github.com/RustScan/RustScan/releases/download/2.0.1/rustscan_2.0.1_amd64.deb
 sudo apt install -y ./rustscan_2.0.1_amd64.deb 
 rm rustscan_2.0.1_amd64.deb
+
+#obsidian
+cd /opt 
+sudo wget https://github.com/obsidianmd/obsidian-releases/releases/download/v0.12.19/Obsidian-0.12.19.AppImage
+sudo chmod +x Obsidian-0.12.19.AppImage
+cd ~/
 
 #set up aliases
 cd ~/
