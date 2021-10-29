@@ -30,6 +30,7 @@ cd /opt
 sudo git clone https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite.git
 sudo git clone https://github.com/rebootuser/LinEnum.git
 sudo git clone https://github.com/pentestmonkey/php-reverse-shell.git
+sudo git clone https://github.com/itm4n/PrivescCheck.git
 sudo mkdir pspy
 cd pspy
 sudo wget https://github.com/DominicBreuker/pspy/releases/download/v1.2.0/pspy32
