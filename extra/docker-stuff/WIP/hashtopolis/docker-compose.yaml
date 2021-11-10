@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+    mysql:
+        environment: 
+            - MYSQL_ROOT_PASSWORD=hashtopolis
+            - MYSQL_DATABASE=hashtopolis
+            - MYSQL_USER=mysql
+            - MYSQL_PASSWORD=mysql
+        # build: ./mysql
+        image: mysql:5.7
+        command: --default-authentication-plugin=mysql_native_password
+        # ports: 
+        #     - "3306"
+    pma:
+        image: phpmyadmin
+        environment: 
+            - PMA_HOST=mysql
+        ports:
+            - "8080:80"
+    web:
+        depends_on: 
+            - mysql
+        build: .
+        ports:
+            - "80:80"
+        # expose: 
+        #     - "80"
