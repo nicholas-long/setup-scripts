@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+    rabbit:
+        image: rabbitmq:3-management
+        ports:
+            - "8080:15672"
+    worker:
+        build: ./worker
+        depends_on: 
+            - rabbit
+        env_file: ./environment
+        restart: always
+    publish-api:
+        build: ./api
+        depends_on: 
+            - rabbit
+        ports: 
+            - "5000:5000"
+        env_file: ./environment
