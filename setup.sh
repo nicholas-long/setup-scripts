@@ -1,5 +1,7 @@
 #!/bin/bash
 
+git config --global credential.helper store
+
 sudo apt install -y vim neovim bsdextrautils
 
 # install spacevim
