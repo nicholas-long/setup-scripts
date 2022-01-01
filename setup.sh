@@ -1,5 +1,11 @@
 #!/bin/bash
 
+sudo apt install -y vim neovim bsdextrautils
+
+# install spacevim
+curl -sLf https://spacevim.org/install.sh | bash
+
+
 #install nvidia drivers
 #sudo apt install -y nvidia-opencl-dev nvidia-opencl-common
 #sudo apt install -y nvidia-driver nvidia-cuda-toolkit
